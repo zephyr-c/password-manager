@@ -1,8 +1,10 @@
 from tkinter import *
 from tkinter import messagebox
 from random import choice, randint, shuffle
+import pyperclip
+import json
 
-DEFAULT_EMAIL = "zephyrworthington@gmail.com"
+DEFAULT_EMAIL = "zephyr-c@email.com"
 
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
@@ -25,6 +27,7 @@ def generate_password():
     password = ''.join(password_list)
     password_input.delete(0, 'end')
     password_input.insert(0, password)
+    pyperclip.copy(password)
 
 # ---------------------------- SAVE PASSWORD ------------------------------- #
 def reset_form():
@@ -40,16 +43,52 @@ def save_password():
     website = website_input.get()
     login_name = user_input.get()
     password = password_input.get()
+    new_data = {
+        website: {
+            "email": login_name,
+            "password": password
+        }
+    }
 
     if not website or not password:
         messagebox.showerror(title="Oops!", message="Please don't leave any fields empty!")
     else:
-        is_ok = messagebox.askokcancel(title=website, message=f"Confirm details: \nEmail/Username: {login_name} "
-                                                      f"\nPassword: {password} \nOk to save?")
-        if is_ok:
-            with open("data.txt", "a") as file:
-                file.write(f'{website} | {login_name} | {password}\n')
+        # with open("data.json", "r") as file:
+        try:
+            data_file = open("data.json")
+        except FileNotFoundError:
+            data = new_data
+        else:
+            # Reading old data
+            data = json.load(data_file)
+            # Updating old data with new data
+            data.update(new_data)
+
+            data_file.close()
+        finally:
+            with open("data.json", "w") as data_file:
+                # Saving updated data
+                json.dump(data, data_file, indent=4)
+
                 reset_form()
+
+# ---------------------------- FIND PASSWORD ------------------------------- #
+def find_password():
+    website = website_input.get()
+
+    try:
+        with open("data.json", "r") as data_file:
+            data = json.load(data_file)
+    except FileNotFoundError:
+        messagebox.showerror(title="No Data File Found", message="You haven't saved any passwords!")
+    else:
+        password_info = data.get(website, None)
+
+        if not password_info:
+            messagebox.showinfo(title="Password Not Found", message="You haven't saved a password for that website!")
+        else:
+            messagebox.showinfo(title=website, message=f"eMail: {password_info['email']}\n"
+                                                       f"Password: {password_info['password']}")
 
 
 # ---------------------------- UI SETUP ------------------------------- #
@@ -76,11 +115,14 @@ user_label.grid(row=2, column=0)
 password_label = Label(text="Password: ")
 password_label.grid(row=3, column=0)
 
+# Customization Labels
+
+
 # Input Fields
 # Website Input Field
-website_input = Entry(width=35)
+website_input = Entry(width=21)
 website_input.focus()
-website_input.grid(row=1, column=1, columnspan=2)
+website_input.grid(row=1, column=1)
 
 # User Input Field
 user_input = Entry(width=35)
@@ -92,6 +134,10 @@ password_input = Entry(width=21)
 password_input.grid(row=3, column=1)
 
 # Buttons
+# Search Button
+search_button = Button(text="Search", width=14, command=find_password)
+search_button.grid(row=1, column=2)
+
 # Generate Password Button
 generate_button = Button(text="Generate Password", command=generate_password)
 generate_button.grid(row=3, column=2)
